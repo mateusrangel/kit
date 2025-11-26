@@ -10,23 +10,23 @@ type StateActions struct {
 }
 type Trigger string
 
-type Machine struct {
+type Machine[T any] struct {
 	currState   State
 	transitions map[State]map[Trigger]*StateActions
 	Initial     State
-	Model       any
+	Model       T
 	States      []State
 }
 
-func New(model any, states []string, initial string) *Machine {
+func New[T any](model T, states []string, initial string) *Machine[T] {
 	stateSlice := make([]State, len(states))
 	for i, s := range states {
 		stateSlice[i] = State(s)
 	}
-	return &Machine{currState: State(initial), transitions: make(map[State]map[Trigger]*StateActions), Model: model, States: stateSlice, Initial: State(initial)}
+	return &Machine[T]{currState: State(initial), transitions: make(map[State]map[Trigger]*StateActions), Model: model, States: stateSlice, Initial: State(initial)}
 }
 
-func (m *Machine) AddTransition(trigger string, source string, dest string, actions []Action) {
+func (m *Machine[T]) AddTransition(trigger string, source string, dest string, actions []Action) {
 	srcState := State(source)
 	trig := Trigger(trigger)
 	destState := State(dest)
@@ -38,7 +38,7 @@ func (m *Machine) AddTransition(trigger string, source string, dest string, acti
 	m.transitions[srcState][trig] = &StateActions{State: destState, Actions: actions}
 }
 
-func (m *Machine) ExecTrigger(trigger string) error {
+func (m *Machine[T]) ExecTrigger(trigger string) error {
 	stateActions, ok := m.transitions[m.currState][Trigger(trigger)]
 	if !ok {
 		return errors.New("invalid Transition")
