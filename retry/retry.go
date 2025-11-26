@@ -1,3 +1,6 @@
+// Package retry provides a generic functions to execute a function multiple times
+// with a specified backoff period until it succeeds, a maximum number of
+// retries is exceeded, or the provided context is done (canceled or timed out).
 package retry
 
 import (
@@ -7,11 +10,30 @@ import (
 	"time"
 )
 
-var ErrMaxAttemptsExceeded error = errors.New("retry: max attempts exceeded")
-var ErrNegativeRetries error = errors.New("retry: retries cannot be negative")
+// ErrMaxAttemptsExceeded is returned when the function execution has failed all attempts.
+var ErrMaxAttemptsExceeded = errors.New("retry: max attempts exceeded")
 
+// ErrNegativeRetries is returned if the retries parameter is negative.
+var ErrNegativeRetries = errors.New("retry: retries cannot be negative")
+
+// Execute attempts to run the function fn up to (1 + retries) times.
+//
+// If fn returns success (non-nil output and nil error), its output is returned immediately.
+// If fn returns an error, the function pauses for the backoff duration before the next
+// attempt, provided the maximum number of attempts has not been reached.
+//
+// The execution halts immediately if the context is already done (canceled/expired) upon entry, or if the context signals done during a backoff period, returning ctx.Err().
+//
+// If retries is negative, Execute returns ErrNegativeRetries.
+// If all attempts fail, it returns an error wrapping ErrMaxAttemptsExceeded,
+// including the total number of attempts and the last error encountered.
 func Execute[T any](ctx context.Context, fn func() (T, error), retries int, backoff time.Duration) (T, error) {
 	var zeroT T
+
+	if err := ctx.Err(); err != nil {
+		return zeroT, err
+	}
+
 	if retries < 0 {
 		return zeroT, ErrNegativeRetries
 	}
