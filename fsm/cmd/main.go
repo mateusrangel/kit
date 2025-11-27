@@ -21,7 +21,7 @@ type DisputeFSM struct {
 }
 
 func (o *DisputeFSM) SendWarningMail() bool {
-	fmt.Println("DISPUTE WAS LOST")
+	fmt.Println("EMAIL: DISPUTE STATE WAS TRANSITIONED TO", o.FSM.Current())
 	return true
 }
 
@@ -30,7 +30,7 @@ func NewOrderFSM(order *Dispute) *DisputeFSM {
 	m := fsm.New(order.State, states)
 	orderFSM := &DisputeFSM{Dispute: order, FSM: m}
 	orderFSM.FSM.AddTransition("VALIDATATION_SUCCEEDED", "RECEIVED", "PROCESSING", []fsm.Action{})
-	orderFSM.FSM.AddTransition("VALIDATION_FAILED", "RECEIVED", "FINISHED", []fsm.Action{})
+	orderFSM.FSM.AddTransition("VALIDATION_FAILED", "RECEIVED", "FINISHED", []fsm.Action{orderFSM.SendWarningMail})
 	orderFSM.FSM.AddTransition("DISPUTE_WON", "PROCESSING", "FINISHED", []fsm.Action{})
 	orderFSM.FSM.AddTransition("DISPUTE_LOST", "PROCESSING", "FINISHED", []fsm.Action{orderFSM.SendWarningMail})
 	return orderFSM
@@ -38,13 +38,8 @@ func NewOrderFSM(order *Dispute) *DisputeFSM {
 
 func main() {
 	orderFSM := NewOrderFSM(New("123abc", "RECEIVED"))
-	fmt.Println(orderFSM.FSM.AvailableTransitions())
 	fmt.Printf("BEFORE: %v\n", orderFSM.FSM.Current())
-	fmt.Println(orderFSM.FSM.Can("VALIDATATION_SUCCEEDED"))
-	fmt.Println(orderFSM.FSM.Can("DELIVERED"))
-	_ = orderFSM.FSM.ExecEvent("VALIDATATION_SUCCEEDED")
+	_ = orderFSM.FSM.ExecEvent("VALIDATION_FAILED")
 	fmt.Printf("AFTER: %v\n", orderFSM.FSM.Current())
-	fmt.Println(orderFSM.FSM.Can("VALIDATATION_SUCCEEDED"))
-	fmt.Println(orderFSM.FSM.Can("DELIVERED"))
 	fmt.Println(fsm.Visualize(orderFSM.FSM))
 }
