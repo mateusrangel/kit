@@ -4,26 +4,29 @@ import "errors"
 
 type State string
 type Action func() bool
-type StateActions struct {
+type StateActionTuple struct {
 	State   State
 	Actions []Action
 }
 type Trigger string
 
-type Machine[T any] struct {
-	currState   State
-	transitions map[State]map[Trigger]*StateActions
-	Initial     State
+type Stateful interface {
+	GetState() string
+	SetState(newState string)
+}
+type Machine[T Stateful] struct {
 	Model       T
+	transitions map[State]map[Trigger]*StateActionTuple
+	Initial     State
 	States      []State
 }
 
-func New[T any](model T, states []string, initial string) *Machine[T] {
+func New[T Stateful](model T, states []string, initial string) *Machine[T] {
 	stateSlice := make([]State, len(states))
 	for i, s := range states {
 		stateSlice[i] = State(s)
 	}
-	return &Machine[T]{currState: State(initial), transitions: make(map[State]map[Trigger]*StateActions), Model: model, States: stateSlice, Initial: State(initial)}
+	return &Machine[T]{transitions: make(map[State]map[Trigger]*StateActionTuple), Model: model, States: stateSlice, Initial: State(initial)}
 }
 
 func (m *Machine[T]) AddTransition(trigger string, source string, dest string, actions []Action) {
@@ -32,19 +35,19 @@ func (m *Machine[T]) AddTransition(trigger string, source string, dest string, a
 	destState := State(dest)
 
 	if _, ok := m.transitions[srcState]; !ok {
-		m.transitions[srcState] = make(map[Trigger]*StateActions)
+		m.transitions[srcState] = make(map[Trigger]*StateActionTuple)
 	}
 
-	m.transitions[srcState][trig] = &StateActions{State: destState, Actions: actions}
+	m.transitions[srcState][trig] = &StateActionTuple{State: destState, Actions: actions}
 }
 
 func (m *Machine[T]) ExecTrigger(trigger string) error {
-	stateActions, ok := m.transitions[m.currState][Trigger(trigger)]
+	stateActionTuple, ok := m.transitions[State(m.Model.GetState())][Trigger(trigger)]
 	if !ok {
 		return errors.New("invalid Transition")
 	}
-	m.currState = stateActions.State
-	for _, action := range stateActions.Actions {
+	m.Model.SetState(string(stateActionTuple.State))
+	for _, action := range stateActionTuple.Actions {
 		action()
 	}
 	return nil
