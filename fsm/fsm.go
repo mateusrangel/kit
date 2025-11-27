@@ -5,8 +5,8 @@ import "errors"
 type State string
 type Action func() bool
 type StateActionTuple struct {
-	State   State
-	Actions []Action
+	NextState State
+	Actions   []Action
 }
 type Trigger string
 
@@ -38,7 +38,7 @@ func (m *Machine[T]) AddTransition(trigger string, source string, dest string, a
 		m.transitions[srcState] = make(map[Trigger]*StateActionTuple)
 	}
 
-	m.transitions[srcState][trig] = &StateActionTuple{State: destState, Actions: actions}
+	m.transitions[srcState][trig] = &StateActionTuple{NextState: destState, Actions: actions}
 }
 
 func (m *Machine[T]) ExecTrigger(trigger string) error {
@@ -46,7 +46,7 @@ func (m *Machine[T]) ExecTrigger(trigger string) error {
 	if !ok {
 		return errors.New("invalid Transition")
 	}
-	m.Model.SetState(string(stateActionTuple.State))
+	m.Model.SetState(string(stateActionTuple.NextState))
 	for _, action := range stateActionTuple.Actions {
 		action()
 	}
