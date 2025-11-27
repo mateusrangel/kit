@@ -4,6 +4,7 @@ package fsm
 
 import (
 	"errors"
+	"fmt"
 	"slices"
 )
 
@@ -15,37 +16,77 @@ type StateActionTuple struct {
 }
 type Event string
 
-type FSM struct {
-	state       State
-	States      []State
-	transitions map[State]map[Event]*StateActionTuple
-}
-
 type Transition struct {
-	Trigger string
+	Event   string
 	Src     string
 	Dst     string
 	Actions []Action
 }
 
-func New(initial string, states []string) *FSM {
-	stateSlice := make([]State, len(states))
-	for i, s := range states {
-		stateSlice[i] = State(s)
-	}
-	return &FSM{state: State(initial), transitions: make(map[State]map[Event]*StateActionTuple), States: stateSlice}
+var exists = struct{}{}
+
+type FSM struct {
+	state       State
+	stateSet    map[State]struct{}
+	eventSet    map[Event]struct{}
+	transitions map[State]map[Event]*StateActionTuple
 }
 
-func (m *FSM) AddTransition(trigger string, source string, dest string, actions []Action) {
-	srcState := State(source)
-	trig := Event(trigger)
-	destState := State(dest)
+func New(initial string, states []string, events []string) *FSM {
+	machine := &FSM{state: State(initial), transitions: make(map[State]map[Event]*StateActionTuple), stateSet: make(map[State]struct{}), eventSet: make(map[Event]struct{})}
+	for _, v := range states {
+		machine.addState(State(v))
+	}
+	for _, v := range events {
+		machine.addEvent(Event(v))
+	}
+	return machine
+}
+
+func (m *FSM) addState(state State) {
+	m.stateSet[state] = exists
+}
+
+func (m *FSM) addEvent(event Event) {
+	m.eventSet[event] = exists
+}
+
+func (m *FSM) AddTransitions(ts []*Transition) error {
+	for _, t := range ts {
+		err := m.AddTransition(t)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (m *FSM) AddTransition(t *Transition) error {
+	evt := Event(t.Event)
+	srcState := State(t.Src)
+	destState := State(t.Dst)
+
+	_, exists := m.eventSet[evt]
+	if !exists {
+		return fmt.Errorf("event %s doesn't exist", evt)
+	}
+
+	_, exists = m.stateSet[srcState]
+	if !exists {
+		return fmt.Errorf("source state %s doesn't exist", srcState)
+	}
+
+	_, exists = m.stateSet[destState]
+	if !exists {
+		return fmt.Errorf("destination state %s doesn't exist", destState)
+	}
 
 	if _, ok := m.transitions[srcState]; !ok {
 		m.transitions[srcState] = make(map[Event]*StateActionTuple)
 	}
 
-	m.transitions[srcState][trig] = &StateActionTuple{NextState: destState, Actions: actions}
+	m.transitions[srcState][evt] = &StateActionTuple{NextState: destState, Actions: t.Actions}
+	return nil
 }
 
 func (m *FSM) ExecEvent(event string) error {
@@ -77,11 +118,21 @@ func (f *FSM) Current() string {
 	return string(f.state)
 }
 
-func (f *FSM) getStates() []string {
+func (f *FSM) GetStates() []string {
 	states := make([]string, 0)
-	for _, state := range f.States {
+	for state := range f.stateSet {
 		states = append(states, string(state))
 	}
+
+	return states
+}
+
+func (f *FSM) getSortedStates() []string {
+	states := make([]string, 0)
+	for state := range f.stateSet {
+		states = append(states, string(state))
+	}
+	slices.Sort(states)
 	return states
 }
 

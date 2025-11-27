@@ -13,7 +13,7 @@ func Visualize(fsm *FSM) string {
 
 	writeHeaderLine(&buf)
 	writeTransitions(&buf, fsm.transitions, sortedSrcStates)
-	writeStates(&buf, string(fsm.state), fsm.getStates())
+	writeStates(&buf, string(fsm.state), fsm.getSortedStates())
 	writeFooter(&buf)
 
 	return buf.String()
@@ -41,8 +41,8 @@ func writeTransitions(buf *bytes.Buffer, transitions map[State]map[Event]*StateA
 	buf.WriteString("\n")
 }
 
-func writeStates(buf *bytes.Buffer, current string, sortedStateKeys []string) {
-	for _, k := range sortedStateKeys {
+func writeStates(buf *bytes.Buffer, current string, states []string) {
+	for _, k := range states {
 		if k == current {
 			fmt.Fprintf(buf, `    "%s" [color = "red"];`, k)
 		} else {

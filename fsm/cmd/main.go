@@ -27,12 +27,21 @@ func (o *DisputeFSM) SendWarningMail() bool {
 
 func NewOrderFSM(order *Dispute) *DisputeFSM {
 	var states = []string{"RECEIVED", "PROCESSING", "FINISHED"}
-	m := fsm.New(order.State, states)
+	var events = []string{"VALIDATATION_SUCCEEDED", "VALIDATION_FAILED", "DISPUTE_WON", "DISPUTE_LOST"}
+	m := fsm.New(order.State, states, events)
 	orderFSM := &DisputeFSM{Dispute: order, FSM: m}
-	orderFSM.FSM.AddTransition("VALIDATATION_SUCCEEDED", "RECEIVED", "PROCESSING", []fsm.Action{})
-	orderFSM.FSM.AddTransition("VALIDATION_FAILED", "RECEIVED", "FINISHED", []fsm.Action{orderFSM.SendWarningMail})
-	orderFSM.FSM.AddTransition("DISPUTE_WON", "PROCESSING", "FINISHED", []fsm.Action{})
-	orderFSM.FSM.AddTransition("DISPUTE_LOST", "PROCESSING", "FINISHED", []fsm.Action{orderFSM.SendWarningMail})
+
+	transitions := []*fsm.Transition{
+		{Event: "VALIDATATION_SUCCEEDED", Src: "RECEIVED", Dst: "PROCESSING"},
+		{Event: "VALIDATION_FAILED", Src: "RECEIVED", Dst: "FINISHED", Actions: []fsm.Action{orderFSM.SendWarningMail}},
+		{Event: "DISPUTE_WON", Src: "PROCESSING", Dst: "FINISHED"},
+		{Event: "DISPUTE_LOST", Src: "PROCESSING", Dst: "FINISHED", Actions: []fsm.Action{orderFSM.SendWarningMail}},
+	}
+
+	err := orderFSM.FSM.AddTransitions(transitions)
+	if err != nil {
+		panic(err)
+	}
 	return orderFSM
 }
 
