@@ -3,7 +3,6 @@ package fsm
 import (
 	"bytes"
 	"fmt"
-	"slices"
 )
 
 // Visualize outputs a visualization of a FSM in Graphviz format.
@@ -20,22 +19,9 @@ func Visualize(fsm *FSM) string {
 	return buf.String()
 }
 
-func getSortedStateKeys(transitions map[State]map[Event]*StateActionTuple) []State {
-	keys := make([]State, 0, len(transitions))
-	for state := range transitions {
-		keys = append(keys, state)
-	}
-	slices.Sort(keys)
-	return keys
-}
-
-func getSortedEventKeys(eventMap map[Event]*StateActionTuple) []Event {
-	keys := make([]Event, 0, len(eventMap))
-	for event := range eventMap {
-		keys = append(keys, event)
-	}
-	slices.Sort(keys)
-	return keys
+func writeHeaderLine(buf *bytes.Buffer) {
+	buf.WriteString(`digraph fsm {`)
+	buf.WriteString("\n")
 }
 
 func writeTransitions(buf *bytes.Buffer, transitions map[State]map[Event]*StateActionTuple, sortedSrcStates []State) {
@@ -52,11 +38,6 @@ func writeTransitions(buf *bytes.Buffer, transitions map[State]map[Event]*StateA
 		}
 	}
 
-	buf.WriteString("\n")
-}
-
-func writeHeaderLine(buf *bytes.Buffer) {
-	buf.WriteString(`digraph fsm {`)
 	buf.WriteString("\n")
 }
 

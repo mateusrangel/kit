@@ -4,6 +4,7 @@ package fsm
 
 import (
 	"errors"
+	"slices"
 )
 
 type State string
@@ -82,4 +83,22 @@ func (f *FSM) getStates() []string {
 		states = append(states, string(state))
 	}
 	return states
+}
+
+func getSortedStateKeys(transitions map[State]map[Event]*StateActionTuple) []State {
+	keys := make([]State, 0, len(transitions))
+	for state := range transitions {
+		keys = append(keys, state)
+	}
+	slices.Sort(keys)
+	return keys
+}
+
+func getSortedEventKeys(eventMap map[Event]*StateActionTuple) []Event {
+	keys := make([]Event, 0, len(eventMap))
+	for event := range eventMap {
+		keys = append(keys, event)
+	}
+	slices.Sort(keys)
+	return keys
 }
