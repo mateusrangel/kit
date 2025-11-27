@@ -34,7 +34,7 @@ func SendMail() bool {
 
 func NewOrderFSM(order *Order) *OrderFSM {
 	var states = []string{"RECEIVED", "PROCESSING", "FINISHED"}
-	m := fsm.New(order, states, states[0])
+	m := fsm.New(order, states)
 	m.AddTransition("VALIDATED", "RECEIVED", "PROCESSING", []fsm.Action{SendMail})
 	m.AddTransition("DELIVERED", "PROCESSING", "FINISHED", []fsm.Action{SendMail})
 	return &OrderFSM{m}

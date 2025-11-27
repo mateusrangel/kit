@@ -17,16 +17,15 @@ type Stateful interface {
 type Machine[T Stateful] struct {
 	Model       T
 	transitions map[State]map[Trigger]*StateActionTuple
-	Initial     State
 	States      []State
 }
 
-func New[T Stateful](model T, states []string, initial string) *Machine[T] {
+func New[T Stateful](model T, states []string) *Machine[T] {
 	stateSlice := make([]State, len(states))
 	for i, s := range states {
 		stateSlice[i] = State(s)
 	}
-	return &Machine[T]{transitions: make(map[State]map[Trigger]*StateActionTuple), Model: model, States: stateSlice, Initial: State(initial)}
+	return &Machine[T]{transitions: make(map[State]map[Trigger]*StateActionTuple), Model: model, States: stateSlice}
 }
 
 func (m *Machine[T]) AddTransition(trigger string, source string, dest string, actions []Action) {
