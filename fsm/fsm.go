@@ -17,9 +17,9 @@ type StateActionTuple struct {
 type Event string
 
 type Transition struct {
-	Event   string
-	Src     string
-	Dst     string
+	Event   Event
+	Src     State
+	Dst     State
 	Actions []Action
 }
 
@@ -32,13 +32,13 @@ type FSM struct {
 	transitions map[State]map[Event]*StateActionTuple
 }
 
-func New(initial string, states []string, events []string) *FSM {
+func New(initial string, states []State, events []Event) *FSM {
 	machine := &FSM{state: State(initial), transitions: make(map[State]map[Event]*StateActionTuple), stateSet: make(map[State]struct{}), eventSet: make(map[Event]struct{})}
 	for _, v := range states {
-		machine.addState(State(v))
+		machine.addState(v)
 	}
 	for _, v := range events {
-		machine.addEvent(Event(v))
+		machine.addEvent(v)
 	}
 	return machine
 }
@@ -125,6 +125,10 @@ func (f *FSM) GetStates() []string {
 	}
 
 	return states
+}
+
+func (f *FSM) Visualize() string {
+	return Visualize(f)
 }
 
 func (f *FSM) getSortedStates() []string {
