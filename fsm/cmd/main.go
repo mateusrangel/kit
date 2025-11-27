@@ -11,39 +11,35 @@ type Order struct {
 	State string
 }
 
-func (o *Order) GetState() string {
-	return o.State
-}
-
-func (o *Order) SetState(newState string) {
-	o.State = newState
-}
-
-func New(id string, status string) *Order {
-	return &Order{Id: id, State: status}
+func New(id string, state string) *Order {
+	return &Order{Id: id, State: state}
 }
 
 type OrderFSM struct {
-	*fsm.Machine[*Order]
-}
-
-func SendMail() bool {
-	fmt.Println("SENDING E-MAIL")
-	return true
+	Order *Order
+	FSM   *fsm.FSM
 }
 
 func NewOrderFSM(order *Order) *OrderFSM {
 	var states = []string{"RECEIVED", "PROCESSING", "FINISHED"}
-	m := fsm.New(order, states)
-	m.AddTransition("VALIDATED", "RECEIVED", "PROCESSING", []fsm.Action{SendMail})
-	m.AddTransition("DELIVERED", "PROCESSING", "FINISHED", []fsm.Action{SendMail})
-	return &OrderFSM{m}
+	m := fsm.New(order.State, states)
+	m.AddTransition("VALIDATATION_SUCCEEDED", "RECEIVED", "PROCESSING", []fsm.Action{})
+	m.AddTransition("VALIDATION_FAILED", "RECEIVED", "FINISHED", []fsm.Action{})
+	m.AddTransition("DISPUTE_WON", "PROCESSING", "FINISHED", []fsm.Action{})
+	m.AddTransition("DISPUTE_LOST", "PROCESSING", "FINISHED", []fsm.Action{})
+
+	return &OrderFSM{Order: order, FSM: m}
 }
 
 func main() {
-	order := New("123abc", "RECEIVED")
-	machine := NewOrderFSM(order)
-	fmt.Printf("BEFORE: %v\n", order)
-	_ = machine.ExecTrigger("VALIDATED")
-	fmt.Printf("AFTER: %v\n", order)
+	orderFSM := NewOrderFSM(New("123abc", "RECEIVED"))
+	fmt.Println(orderFSM.FSM.AvailableTransitions())
+	fmt.Printf("BEFORE: %v\n", orderFSM.FSM.Current())
+	fmt.Println(orderFSM.FSM.Can("VALIDATATION_SUCCEEDED"))
+	fmt.Println(orderFSM.FSM.Can("DELIVERED"))
+	_ = orderFSM.FSM.ExecEvent("VALIDATATION_SUCCEEDED")
+	fmt.Printf("AFTER: %v\n", orderFSM.FSM.Current())
+	fmt.Println(orderFSM.FSM.Can("VALIDATATION_SUCCEEDED"))
+	fmt.Println(orderFSM.FSM.Can("DELIVERED"))
+	fmt.Println(fsm.Visualize(orderFSM.FSM))
 }
