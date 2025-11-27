@@ -6,29 +6,34 @@ import (
 	"github.com/mateusrangel/kit/fsm"
 )
 
-type Order struct {
+type Dispute struct {
 	Id    string
 	State string
 }
 
-func New(id string, state string) *Order {
-	return &Order{Id: id, State: state}
+func New(id string, state string) *Dispute {
+	return &Dispute{Id: id, State: state}
 }
 
-type OrderFSM struct {
-	Order *Order
-	FSM   *fsm.FSM
+type DisputeFSM struct {
+	Dispute *Dispute
+	FSM     *fsm.FSM
 }
 
-func NewOrderFSM(order *Order) *OrderFSM {
+func (o *DisputeFSM) SendWarningMail() bool {
+	fmt.Println("DISPUTE WAS LOST")
+	return true
+}
+
+func NewOrderFSM(order *Dispute) *DisputeFSM {
 	var states = []string{"RECEIVED", "PROCESSING", "FINISHED"}
 	m := fsm.New(order.State, states)
-	m.AddTransition("VALIDATATION_SUCCEEDED", "RECEIVED", "PROCESSING", []fsm.Action{})
-	m.AddTransition("VALIDATION_FAILED", "RECEIVED", "FINISHED", []fsm.Action{})
-	m.AddTransition("DISPUTE_WON", "PROCESSING", "FINISHED", []fsm.Action{})
-	m.AddTransition("DISPUTE_LOST", "PROCESSING", "FINISHED", []fsm.Action{})
-
-	return &OrderFSM{Order: order, FSM: m}
+	orderFSM := &DisputeFSM{Dispute: order, FSM: m}
+	orderFSM.FSM.AddTransition("VALIDATATION_SUCCEEDED", "RECEIVED", "PROCESSING", []fsm.Action{})
+	orderFSM.FSM.AddTransition("VALIDATION_FAILED", "RECEIVED", "FINISHED", []fsm.Action{})
+	orderFSM.FSM.AddTransition("DISPUTE_WON", "PROCESSING", "FINISHED", []fsm.Action{})
+	orderFSM.FSM.AddTransition("DISPUTE_LOST", "PROCESSING", "FINISHED", []fsm.Action{orderFSM.SendWarningMail})
+	return orderFSM
 }
 
 func main() {
