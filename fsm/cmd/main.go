@@ -11,42 +11,40 @@ type Dispute struct {
 	State string
 }
 
-func New(id string, state string) *Dispute {
+func NewDispute(id string, state string) *Dispute {
 	return &Dispute{Id: id, State: state}
 }
 
-type DisputeFSM struct {
+type DisputeService struct {
 	Dispute *Dispute
 	FSM     *fsm.FSM
 }
 
-func (o *DisputeFSM) SendWarningMail() bool {
+func (o *DisputeService) SendWarningMail() bool {
 	fmt.Println("EMAIL: DISPUTE STATE WAS TRANSITIONED TO", o.FSM.Current())
 	return true
 }
 
-func NewOrderFSM(order *Dispute) *DisputeFSM {
+func NewDisputeService(d *Dispute) *DisputeService {
+	disputeService := &DisputeService{Dispute: d}
 	var states = []string{"RECEIVED", "PROCESSING", "FINISHED"}
 	var events = []string{"VALIDATATION_SUCCEEDED", "VALIDATION_FAILED", "DISPUTE_WON", "DISPUTE_LOST"}
-	m := fsm.New(order.State, states, events)
-	orderFSM := &DisputeFSM{Dispute: order, FSM: m}
-
 	transitions := []*fsm.Transition{
 		{Event: "VALIDATATION_SUCCEEDED", Src: "RECEIVED", Dst: "PROCESSING"},
-		{Event: "VALIDATION_FAILED", Src: "RECEIVED", Dst: "FINISHED", Actions: []fsm.Action{orderFSM.SendWarningMail}},
+		{Event: "VALIDATION_FAILED", Src: "RECEIVED", Dst: "FINISHED", Actions: []fsm.Action{disputeService.SendWarningMail}},
 		{Event: "DISPUTE_WON", Src: "PROCESSING", Dst: "FINISHED"},
-		{Event: "DISPUTE_LOST", Src: "PROCESSING", Dst: "FINISHED", Actions: []fsm.Action{orderFSM.SendWarningMail}},
+		{Event: "DISPUTE_LOST", Src: "PROCESSING", Dst: "FINISHED", Actions: []fsm.Action{disputeService.SendWarningMail}},
 	}
-
-	err := orderFSM.FSM.AddTransitions(transitions)
+	m, err := fsm.New(d.State, states, events, transitions)
 	if err != nil {
 		panic(err)
 	}
-	return orderFSM
+	disputeService.FSM = m
+	return disputeService
 }
 
 func main() {
-	orderFSM := NewOrderFSM(New("123abc", "RECEIVED"))
+	orderFSM := NewDisputeService(NewDispute("123abc", "RECEIVED"))
 	fmt.Printf("BEFORE: %v\n", orderFSM.FSM.Current())
 	_ = orderFSM.FSM.ExecEvent("VALIDATION_FAILED")
 	fmt.Printf("AFTER: %v\n", orderFSM.FSM.Current())

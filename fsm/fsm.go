@@ -32,15 +32,19 @@ type FSM struct {
 	transitions map[State]map[Event]*StateActionTuple
 }
 
-func New(initial string, states []string, events []string) *FSM {
-	machine := &FSM{state: State(initial), transitions: make(map[State]map[Event]*StateActionTuple), stateSet: make(map[State]struct{}), eventSet: make(map[Event]struct{})}
+func New(initial string, states []string, events []string, ts []*Transition) (*FSM, error) {
+	m := &FSM{state: State(initial), transitions: make(map[State]map[Event]*StateActionTuple), stateSet: make(map[State]struct{}), eventSet: make(map[Event]struct{})}
 	for _, v := range states {
-		machine.addState(State(v))
+		m.addState(State(v))
 	}
 	for _, v := range events {
-		machine.addEvent(Event(v))
+		m.addEvent(Event(v))
 	}
-	return machine
+	err := m.AddTransitions(ts)
+	if err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 func (m *FSM) addState(state State) {
