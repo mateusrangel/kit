@@ -6,6 +6,23 @@ import (
 	"github.com/mateusrangel/kit/fsm"
 )
 
+// Const States
+const (
+	StateReceived    = "RECEIVED"
+	StateCreateClaim = "CREATE_CLAIM"
+	StateProcessing  = "PROCESSING"
+	StateFinished    = "FINISHED"
+)
+
+// Events
+const (
+	EventValidationSucceded = "VALIDATION_SUCCEEDED"
+	EventValidationFailed   = "VALIDATION_FAILED"
+	EventClaimCreated       = "CLAIM_CREATED"
+	EventDisputeWon         = "DISPUTE_WON"
+	EventDispotLost         = "DISPUTE_LOST"
+)
+
 type Dispute struct {
 	Id    string
 	State string
@@ -21,19 +38,20 @@ type DisputeService struct {
 }
 
 func (o *DisputeService) SendWarningMail() bool {
-	fmt.Println("EMAIL: DISPUTE STATE WAS TRANSITIONED TO", o.FSM.Current())
+	fmt.Printf("EMAIL: DISPUTE %s STATE WAS TRANSITIONED TO %s\n", o.Dispute.Id, o.FSM.Current())
 	return true
 }
 
 func NewDisputeService(d *Dispute) *DisputeService {
 	disputeService := &DisputeService{Dispute: d}
-	var states = []string{"RECEIVED", "PROCESSING", "FINISHED"}
-	var events = []string{"VALIDATATION_SUCCEEDED", "VALIDATION_FAILED", "DISPUTE_WON", "DISPUTE_LOST"}
+	var states = []string{StateReceived, StateCreateClaim, StateProcessing, StateFinished}
+	var events = []string{EventValidationSucceded, EventValidationFailed, EventClaimCreated, EventDisputeWon, EventDispotLost}
 	transitions := []*fsm.Transition{
-		{Event: "VALIDATATION_SUCCEEDED", Src: "RECEIVED", Dst: "PROCESSING"},
-		{Event: "VALIDATION_FAILED", Src: "RECEIVED", Dst: "FINISHED", Actions: []fsm.Action{disputeService.SendWarningMail}},
-		{Event: "DISPUTE_WON", Src: "PROCESSING", Dst: "FINISHED"},
-		{Event: "DISPUTE_LOST", Src: "PROCESSING", Dst: "FINISHED", Actions: []fsm.Action{disputeService.SendWarningMail}},
+		{Event: EventValidationSucceded, Src: StateReceived, Dst: StateCreateClaim},
+		{Event: EventValidationFailed, Src: StateReceived, Dst: StateFinished, Actions: []fsm.Action{disputeService.SendWarningMail}},
+		{Event: EventClaimCreated, Src: StateCreateClaim, Dst: StateProcessing},
+		{Event: EventDisputeWon, Src: StateProcessing, Dst: StateFinished},
+		{Event: EventDispotLost, Src: StateProcessing, Dst: StateFinished, Actions: []fsm.Action{disputeService.SendWarningMail}},
 	}
 	m, err := fsm.New(d.State, states, events, transitions)
 	if err != nil {
@@ -45,8 +63,14 @@ func NewDisputeService(d *Dispute) *DisputeService {
 
 func main() {
 	orderFSM := NewDisputeService(NewDispute("123abc", "RECEIVED"))
+
 	fmt.Printf("BEFORE: %v\n", orderFSM.FSM.Current())
-	_ = orderFSM.FSM.ExecEvent("VALIDATION_FAILED")
+	_ = orderFSM.FSM.ExecEvent("VALIDATION_SUCCEEDED")
 	fmt.Printf("AFTER: %v\n", orderFSM.FSM.Current())
+
+	fmt.Printf("BEFORE: %v\n", orderFSM.FSM.Current())
+	_ = orderFSM.FSM.ExecEvent("CLAIM_CREATED")
+	fmt.Printf("AFTER: %v\n", orderFSM.FSM.Current())
+
 	fmt.Println(fsm.Visualize(orderFSM.FSM))
 }
